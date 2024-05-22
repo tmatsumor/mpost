@@ -146,6 +146,7 @@
             btnPost.TabIndex = 0;
             btnPost.Text = "投稿";
             btnPost.UseVisualStyleBackColor = true;
+            btnPost.Click += btnPost_Click;
             // 
             // frmMPost
             // 
