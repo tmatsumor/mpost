@@ -1,6 +1,5 @@
 using System.Configuration;
 using System.Text;
-using static System.Net.Mime.MediaTypeNames;
 
 namespace mpost
 {
@@ -30,7 +29,7 @@ namespace mpost
 
         async private void btnPost_Click(object sender, EventArgs e)
         {
-            var txt = txtMessage.Text.Trim().Replace("\r\n", "\\n");  // JSON用に改行置換
+            var txt = txtMessage.Text.Trim().Replace(@"\", @"\\").Replace("\"", "\\\"").Replace("\r\n", "\\n");
 
             var dialog = MessageBox.Show("投稿します。よろしいですか？",
                 "確認", MessageBoxButtons.OKCancel, MessageBoxIcon.Information);
@@ -38,7 +37,7 @@ namespace mpost
             {
                 if(chkTwitter.Checked)
                 {
-                    var res = await PostToTwitter(txt);
+                    var res = await PostToTwitter(txt.Replace("```", ""));
                     System.Diagnostics.Debug.WriteLine(res);
                 }
 
