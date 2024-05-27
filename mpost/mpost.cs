@@ -1,4 +1,6 @@
 using System.Configuration;
+using System.Runtime.Serialization;
+using System.Runtime.Serialization.Json;
 using System.Text;
 
 namespace mpost
@@ -8,6 +10,13 @@ namespace mpost
         string? twitter_token;
         string? slack_token;
         string? slack_channel;
+        [DataContract] //データコントラクト属性
+        public partial class JsonData
+        {
+            [DataMember(Name = "refresh_token")] //データメンバ属性
+            public string? RefreshToken { get; set; }
+        }
+
         public frmMPost()
         {
             InitializeComponent();
@@ -25,6 +34,13 @@ namespace mpost
                 MessageBox.Show(msg);
                 throw new Exception(msg);
             }
+
+            var serializer = new DataContractJsonSerializer(typeof(JsonData));
+            var json = File.ReadAllText("twitter_token.json");
+            var ms = new MemoryStream(Encoding.UTF8.GetBytes((json)));
+            ms.Seek(0, SeekOrigin.Begin); // ストリームの先頭
+            var data = serializer.ReadObject(ms) as JsonData;
+            System.Diagnostics.Debug.WriteLine($"RefreshToken : {data.RefreshToken}");
         }
 
         async private void btnPost_Click(object sender, EventArgs e)
