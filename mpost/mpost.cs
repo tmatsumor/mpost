@@ -7,26 +7,26 @@ namespace mpost
 {
     public partial class frmMPost : Form
     {
-        string? twitter_token;
-        string? slack_token;
-        string? slack_channel;
+        string slack_token;
+        string slack_channel;
+        string twitter_token_json_path;
         [DataContract] //データコントラクト属性
         public partial class JsonData
         {
-            [DataMember(Name = "refresh_token")] //データメンバ属性
-            public string? RefreshToken { get; set; }
+            [DataMember(Name = "access_token")] //データメンバ属性
+            public string? AccessToken { get; set; }
         }
 
         public frmMPost()
         {
             InitializeComponent();
 
-            twitter_token = ConfigurationManager.AppSettings["twitter_access_token"];
-            slack_token   = ConfigurationManager.AppSettings["slack_access_token"];
-            slack_channel = ConfigurationManager.AppSettings["slack_channel_name"];
-            var msg = (twitter_token == null) ? "twitter_access_token の取得に失敗しました"
-                : (slack_token == null)?        "slack_access_token の取得に失敗しました"
-                : (slack_channel == null)?      "slack_channel_name の取得に失敗しました"
+            slack_token   = ConfigurationManager.AppSettings["slack_access_token"] ?? "";
+            slack_channel = ConfigurationManager.AppSettings["slack_channel_name"] ?? "";
+            twitter_token_json_path = ConfigurationManager.AppSettings["twitter_token_json_path"] ?? "";
+            var msg = (slack_token.Length == 0)?    "slack_access_token の取得に失敗しました"
+                : (slack_channel.Length == 0)?      "slack_channel_name の取得に失敗しました"
+                : (twitter_token_json_path.Length == 0)? "twitter_token_json_path の取得に失敗しました"
                 : string.Empty;
 
             if (msg != string.Empty)            // 設定ファイルにキーがない場合は起動中止
@@ -34,38 +34,40 @@ namespace mpost
                 MessageBox.Show(msg);
                 throw new Exception(msg);
             }
-
-            var serializer = new DataContractJsonSerializer(typeof(JsonData));
-            var json = File.ReadAllText("twitter_token.json");
-            var ms = new MemoryStream(Encoding.UTF8.GetBytes((json)));
-            ms.Seek(0, SeekOrigin.Begin); // ストリームの先頭
-            var data = serializer.ReadObject(ms) as JsonData;
-            System.Diagnostics.Debug.WriteLine($"RefreshToken : {data.RefreshToken}");
         }
 
         async private void btnPost_Click(object sender, EventArgs e)
         {
-            var txt = txtMessage.Text.Trim().Replace(@"\", @"\\").Replace("\"", "\\\"").Replace("\r\n", "\\n");
-
-            var dialog = MessageBox.Show("投稿します。よろしいですか？",
-                "確認", MessageBoxButtons.OKCancel, MessageBoxIcon.Information);
-            if (dialog == DialogResult.OK)
+            try
             {
-                if(chkTwitter.Checked)
-                {
-                    var res = await PostToTwitter(txt.Replace("```", ""));
-                    System.Diagnostics.Debug.WriteLine(res);
-                }
+                var txt = txtMessage.Text.Trim().Replace(@"\", @"\\").Replace("\"", "\\\"").Replace("\r\n", "\\n");
 
-                if (chkSlack.Checked)
+                var dialog = MessageBox.Show("投稿します。よろしいですか？",
+                    "確認", MessageBoxButtons.OKCancel, MessageBoxIcon.Information);
+                if (dialog == DialogResult.OK)
                 {
-                    var res = await PostToSlack(txt);
-                    System.Diagnostics.Debug.WriteLine(res);
+                    if (chkTwitter.Checked)
+                    {
+                        var twitter_token = getTwitterAccessTokenFromJsonFile(twitter_token_json_path);
+                        var res = await PostToTwitter(txt.Replace("```", ""), twitter_token);
+                        System.Diagnostics.Debug.WriteLine(res);
+                    }
+
+                    if (chkSlack.Checked)
+                    {
+                        var res = await PostToSlack(txt);
+                        System.Diagnostics.Debug.WriteLine(res);
+                    }
                 }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error: {ex.Message}");
+                return;
             }
         }
 
-        async private Task<string> PostToTwitter(string txt)
+        async private Task<string> PostToTwitter(string txt, string? twitter_token)
         {
             string body = $@"{{""text"":""{txt}""}}";
             return await Post("tweets", body, "https://api.twitter.com/2/", twitter_token);
@@ -90,6 +92,15 @@ namespace mpost
             client.BaseAddress = new Uri(baseAddress);
             var res = await client.SendAsync(msg);
             return await res.Content.ReadAsStringAsync();
+        }
+        private string? getTwitterAccessTokenFromJsonFile(string path)
+        {
+            var serializer = new DataContractJsonSerializer(typeof(JsonData));
+            var json = File.ReadAllText(path);
+            var ms = new MemoryStream(Encoding.UTF8.GetBytes((json)));
+            ms.Seek(0, SeekOrigin.Begin); // ストリームの先頭
+            var data = serializer.ReadObject(ms) as JsonData;
+            return data?.AccessToken;
         }
     }
 }
