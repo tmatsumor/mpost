@@ -1,7 +1,8 @@
-using System.Configuration;
+ï»¿using System.Configuration;
 using System.Runtime.Serialization;
 using System.Runtime.Serialization.Json;
 using System.Text;
+using Renci.SshNet;
 
 namespace mpost
 {
@@ -9,11 +10,14 @@ namespace mpost
     {
         string slack_token;
         string slack_channel;
-        string twitter_token_json_path;
-        [DataContract] //ƒf[ƒ^ƒRƒ“ƒgƒ‰ƒNƒg‘®«
+        string raspi_host;
+        string raspi_port;
+        string raspi_user;
+        string raspi_private_key_path;
+        string raspi_twitter_token_json_path; [DataContract] //ãƒ‡ãƒ¼ã‚¿ã‚³ãƒ³ãƒˆãƒ©ã‚¯ãƒˆå±æ€§
         public partial class JsonData
         {
-            [DataMember(Name = "access_token")] //ƒf[ƒ^ƒƒ“ƒo‘®«
+            [DataMember(Name = "access_token")] //ãƒ‡ãƒ¼ã‚¿ãƒ¡ãƒ³ãƒå±æ€§
             public string? AccessToken { get; set; }
         }
 
@@ -21,15 +25,23 @@ namespace mpost
         {
             InitializeComponent();
 
-            slack_token   = ConfigurationManager.AppSettings["slack_access_token"] ?? "";
+            slack_token = ConfigurationManager.AppSettings["slack_access_token"] ?? "";
             slack_channel = ConfigurationManager.AppSettings["slack_channel_name"] ?? "";
-            twitter_token_json_path = ConfigurationManager.AppSettings["twitter_token_json_path"] ?? "";
-            var msg = (slack_token.Length == 0)?    "slack_access_token ‚Ìæ“¾‚É¸”s‚µ‚Ü‚µ‚½"
-                : (slack_channel.Length == 0)?      "slack_channel_name ‚Ìæ“¾‚É¸”s‚µ‚Ü‚µ‚½"
-                : (twitter_token_json_path.Length == 0)? "twitter_token_json_path ‚Ìæ“¾‚É¸”s‚µ‚Ü‚µ‚½"
+            raspi_host = ConfigurationManager.AppSettings["raspi_host"] ?? "";
+            raspi_port = ConfigurationManager.AppSettings["raspi_port"] ?? "";
+            raspi_user = ConfigurationManager.AppSettings["raspi_user"] ?? "";
+            raspi_private_key_path = ConfigurationManager.AppSettings["raspi_private_key_path"] ?? "";
+            raspi_twitter_token_json_path = ConfigurationManager.AppSettings["raspi_twitter_token_json_path"] ?? "";
+            var msg = (raspi_host.Length == 0) ? "raspi_host ã®å–å¾—ã«å¤±æ•—ã—ã¾ã—ãŸ"
+                : (raspi_port.Length == 0) ? "raspi_port ã®å–å¾—ã«å¤±æ•—ã—ã¾ã—ãŸ"
+                : (raspi_user.Length == 0) ? "raspi_user ã®å–å¾—ã«å¤±æ•—ã—ã¾ã—ãŸ"
+                : (raspi_private_key_path.Length == 0) ? "raspi_private_key_path ã®å–å¾—ã«å¤±æ•—ã—ã¾ã—ãŸ"
+                : (raspi_twitter_token_json_path.Length == 0) ? "raspi_twitter_token_json_path ã®å–å¾—ã«å¤±æ•—ã—ã¾ã—ãŸ"
+                : (slack_token.Length == 0) ? "slack_access_token ã®å–å¾—ã«å¤±æ•—ã—ã¾ã—ãŸ"
+                : (slack_channel.Length == 0) ? "slack_channel_name ã®å–å¾—ã«å¤±æ•—ã—ã¾ã—ãŸ"
                 : string.Empty;
 
-            if (msg != string.Empty)            // İ’èƒtƒ@ƒCƒ‹‚ÉƒL[‚ª‚È‚¢ê‡‚Í‹N“®’†~
+            if (msg != string.Empty)            // è¨­å®šãƒ•ã‚¡ã‚¤ãƒ«ã«ã‚­ãƒ¼ãŒãªã„å ´åˆã¯èµ·å‹•ä¸­æ­¢
             {
                 MessageBox.Show(msg);
                 throw new Exception(msg);
@@ -38,17 +50,20 @@ namespace mpost
 
         async private void btnPost_Click(object sender, EventArgs e)
         {
+            const string TWITTER_TOKEN_JSON_PATH = "./twitter_token.json";
             try
             {
                 var txt = txtMessage.Text.Trim().Replace(@"\", @"\\").Replace("\"", "\\\"").Replace("\r\n", "\\n");
 
-                var dialog = MessageBox.Show("“Še‚µ‚Ü‚·B‚æ‚ë‚µ‚¢‚Å‚·‚©H",
-                    "Šm”F", MessageBoxButtons.OKCancel, MessageBoxIcon.Information);
+                var dialog = MessageBox.Show("æŠ•ç¨¿ã—ã¾ã™ã€‚ã‚ˆã‚ã—ã„ã§ã™ã‹ï¼Ÿ",
+                    "ç¢ºèª", MessageBoxButtons.OKCancel, MessageBoxIcon.Information);
                 if (dialog == DialogResult.OK)
                 {
                     if (chkTwitter.Checked)
                     {
-                        var twitter_token = getTwitterAccessTokenFromJsonFile(twitter_token_json_path);
+                        downloadTwitterTokenJSON(raspi_private_key_path, raspi_host, raspi_port,
+                            raspi_user, TWITTER_TOKEN_JSON_PATH, raspi_twitter_token_json_path);
+                        var twitter_token = getTwitterAccessTokenFromJsonFile(TWITTER_TOKEN_JSON_PATH);
                         var res = await PostToTwitter(txt.Replace("```", ""), twitter_token);
                         System.Diagnostics.Debug.WriteLine(res);
                     }
@@ -98,9 +113,24 @@ namespace mpost
             var serializer = new DataContractJsonSerializer(typeof(JsonData));
             var json = File.ReadAllText(path);
             var ms = new MemoryStream(Encoding.UTF8.GetBytes((json)));
-            ms.Seek(0, SeekOrigin.Begin); // ƒXƒgƒŠ[ƒ€‚Ìæ“ª
+            ms.Seek(0, SeekOrigin.Begin); // ã‚¹ãƒˆãƒªãƒ¼ãƒ ã®å…ˆé ­
             var data = serializer.ReadObject(ms) as JsonData;
             return data?.AccessToken;
+        }
+
+        private void downloadTwitterTokenJSON(string raspi_private_key_path,
+            string raspi_host, string raspi_port, string raspi_user,
+            string twitter_token_json_path, string raspi_twitter_token_json_path)
+        {
+            using (var privateKey = new PrivateKeyFile(raspi_private_key_path))
+            using (var client = new ScpClient(raspi_host,
+                Convert.ToInt32(raspi_port), raspi_user, new[] { privateKey }))
+            {
+                client.RemotePathTransformation = RemotePathTransformation.ShellQuote;
+                client.Connect();
+                FileInfo fi = new FileInfo(twitter_token_json_path);
+                client.Download(raspi_twitter_token_json_path, fi);
+            }
         }
     }
 }
