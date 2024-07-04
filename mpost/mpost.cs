@@ -3,6 +3,7 @@ using System.Runtime.Serialization;
 using System.Runtime.Serialization.Json;
 using System.Text;
 using Renci.SshNet;
+using Microsoft.ClearScript.V8;
 
 namespace mpost
 {
@@ -14,7 +15,9 @@ namespace mpost
         string raspi_port;
         string raspi_user;
         string raspi_private_key_path;
-        string raspi_twitter_token_json_path; [DataContract] //データコントラクト属性
+        string raspi_twitter_token_json_path;
+        V8ScriptEngine v8;
+        [DataContract] //データコントラクト属性
         public partial class JsonData
         {
             [DataMember(Name = "access_token")] //データメンバ属性
@@ -24,6 +27,10 @@ namespace mpost
         public frmMPost()
         {
             InitializeComponent();
+
+            string tt = File.ReadAllText(@"twitter-text-3.1.0.js");
+            v8 = new V8ScriptEngine();
+            v8.Execute(tt);
 
             slack_token = ConfigurationManager.AppSettings["slack_access_token"] ?? "";
             slack_channel = ConfigurationManager.AppSettings["slack_channel_name"] ?? "";
@@ -130,6 +137,28 @@ namespace mpost
                 client.Connect();
                 FileInfo fi = new FileInfo(twitter_token_json_path);
                 client.Download(raspi_twitter_token_json_path, fi);
+            }
+        }
+
+        private void txtMessage_TextChanged(object sender, EventArgs e)
+        {
+            v8.Execute(@"res = twttr.txt.parseTweet('" + txtMessage.Text + "');");
+            dynamic vid = v8.Evaluate("res.valid ");
+            btnPost.Enabled = vid;
+
+            var len = v8.Evaluate("res.weightedLength");
+            var wc = Math.Ceiling(Convert.ToDecimal(len) / 2);
+            lblCurrentWC.Text = wc.ToString();
+
+            if (wc > 140)
+            {
+                lblMaxWC.ForeColor = Color.Red;
+                lblCurrentWC.ForeColor = Color.Red;
+            }
+            else
+            {
+                lblMaxWC.ForeColor = Color.Black;
+                lblCurrentWC.ForeColor = Color.Black;
             }
         }
     }

@@ -76,6 +76,7 @@
             txtMessage.PlaceholderText = "ここに投稿する内容を書きます";
             txtMessage.Size = new Size(584, 187);
             txtMessage.TabIndex = 0;
+            txtMessage.TextChanged += txtMessage_TextChanged;
             // 
             // lblPet
             // 
