@@ -4,6 +4,7 @@ using System.Runtime.Serialization.Json;
 using System.Text;
 using Renci.SshNet;
 using Microsoft.ClearScript.V8;
+using System.Text.RegularExpressions;
 
 namespace mpost
 {
@@ -60,7 +61,7 @@ namespace mpost
             const string TWITTER_TOKEN_JSON_PATH = "./twitter_token.json";
             try
             {
-                var txt = txtMessage.Text.Trim().Replace(@"\", @"\\").Replace("\"", "\\\"").Replace("\r\n", "\\n");
+                var txt = clean(txtMessage.Text);
 
                 var dialog = MessageBox.Show("投稿します。よろしいですか？",
                     "確認", MessageBoxButtons.OKCancel, MessageBoxIcon.Information);
@@ -68,10 +69,11 @@ namespace mpost
                 {
                     if (chkTwitter.Checked)
                     {
+                        var txtForTwitter = Regex.Replace(txt, @"\\n?```", ""); // Slack用の ``` を除去する
                         downloadTwitterTokenJSON(raspi_private_key_path, raspi_host, raspi_port,
                             raspi_user, TWITTER_TOKEN_JSON_PATH, raspi_twitter_token_json_path);
                         var twitter_token = getTwitterAccessTokenFromJsonFile(TWITTER_TOKEN_JSON_PATH);
-                        var res = await PostToTwitter(txt.Replace("```", ""), twitter_token);
+                        var res = await PostToTwitter(txtForTwitter, twitter_token);
                         System.Diagnostics.Debug.WriteLine(res);
                     }
 
@@ -142,7 +144,7 @@ namespace mpost
 
         private void txtMessage_TextChanged(object sender, EventArgs e)
         {
-            v8.Execute(@"res = twttr.txt.parseTweet('" + txtMessage.Text + "');");
+            v8.Execute(@"res = twttr.txt.parseTweet('" + clean(txtMessage.Text) + "');");
             dynamic vid = v8.Evaluate("res.valid ");
             btnPost.Enabled = vid;
 
@@ -160,6 +162,14 @@ namespace mpost
                 lblMaxWC.ForeColor = Color.Black;
                 lblCurrentWC.ForeColor = Color.Black;
             }
+        }
+
+        private string clean(string str)
+        {
+            return str.Trim()
+                .Replace(@"\", @"\\")
+                .Replace("\"", "\\\"")
+                .Replace("\r\n", "\\n");
         }
     }
 }
