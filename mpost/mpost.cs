@@ -28,6 +28,7 @@ namespace mpost
         public frmMPost()
         {
             InitializeComponent();
+            lblPet.Text = ConfigurationManager.AppSettings["icon_on_form"] ?? "";  // ペットマークを差替
 
             string tt = File.ReadAllText(@"twitter-text-3.1.0.js");
             v8 = new V8ScriptEngine();
