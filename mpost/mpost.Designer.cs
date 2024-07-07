@@ -28,13 +28,18 @@
         /// </summary>
         private void InitializeComponent()
         {
+            components = new System.ComponentModel.Container();
             btnPost = new Button();
             chkSlack = new CheckBox();
             chkTwitter = new CheckBox();
             lblCurrentWC = new Label();
             lblMaxWC = new Label();
             lblPet = new Label();
+            cmsPet = new ContextMenuStrip(components);
+            tsmItemPreviousPost = new ToolStripMenuItem();
             txtMessage = new TextBox();
+            tsmItemClear = new ToolStripMenuItem();
+            cmsPet.SuspendLayout();
             SuspendLayout();
             // 
             // btnPost
@@ -102,12 +107,26 @@
             lblPet.Anchor = AnchorStyles.Bottom | AnchorStyles.Right;
             lblPet.AutoSize = true;
             lblPet.BackColor = Color.Transparent;
+            lblPet.ContextMenuStrip = cmsPet;
             lblPet.Font = new Font("Yu Gothic UI", 20.25F, FontStyle.Regular, GraphicsUnit.Point, 128);
             lblPet.Location = new Point(4, 112);
             lblPet.Name = "lblPet";
             lblPet.Size = new Size(54, 37);
             lblPet.TabIndex = 2;
             lblPet.Text = "🐢";
+            // 
+            // cmsPet
+            // 
+            cmsPet.Items.AddRange(new ToolStripItem[] { tsmItemPreviousPost, tsmItemClear });
+            cmsPet.Name = "cmsPet";
+            cmsPet.Size = new Size(175, 48);
+            // 
+            // tsmItemPreviousPost
+            // 
+            tsmItemPreviousPost.Name = "tsmItemPreviousPost";
+            tsmItemPreviousPost.Size = new Size(174, 22);
+            tsmItemPreviousPost.Text = "一つ前の投稿を表示";
+            tsmItemPreviousPost.Click += tsmItemPreviousPost_Click;
             // 
             // txtMessage
             // 
@@ -122,6 +141,13 @@
             txtMessage.Size = new Size(580, 111);
             txtMessage.TabIndex = 0;
             txtMessage.TextChanged += txtMessage_TextChanged;
+            // 
+            // tsmItemClear
+            // 
+            tsmItemClear.Name = "tsmItemClear";
+            tsmItemClear.Size = new Size(174, 22);
+            tsmItemClear.Text = "クリア";
+            tsmItemClear.Click += tsmItemClear_Click;
             // 
             // frmMPost
             // 
@@ -145,6 +171,7 @@
             SizeGripStyle = SizeGripStyle.Hide;
             Text = "mpost";
             TopMost = true;
+            cmsPet.ResumeLayout(false);
             ResumeLayout(false);
             PerformLayout();
         }
@@ -158,5 +185,8 @@
         private Label lblMaxWC;
         private Label lblPet;
         private TextBox txtMessage;
+        private ContextMenuStrip cmsPet;
+        private ToolStripMenuItem tsmItemPreviousPost;
+        private ToolStripMenuItem tsmItemClear;
     }
 }

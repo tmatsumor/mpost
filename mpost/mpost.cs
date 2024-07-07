@@ -5,6 +5,7 @@ using System.Text;
 using Renci.SshNet;
 using Microsoft.ClearScript.V8;
 using System.Text.RegularExpressions;
+using System.IO;
 
 namespace mpost
 {
@@ -17,6 +18,7 @@ namespace mpost
         string raspi_user;
         string raspi_private_key_path;
         string raspi_twitter_token_json_path;
+        string previous_post_file_name;
         V8ScriptEngine v8;
         [DataContract] //データコントラクト属性
         public partial class JsonData
@@ -29,6 +31,7 @@ namespace mpost
         {
             InitializeComponent();
             lblPet.Text = ConfigurationManager.AppSettings["icon_on_form"] ?? "";  // ペットマークを差替
+            previous_post_file_name = ConfigurationManager.AppSettings["previous_post_file_name"] ?? "";
 
             string tt = File.ReadAllText(@"twitter-text-3.1.0.js");
             v8 = new V8ScriptEngine();
@@ -82,6 +85,15 @@ namespace mpost
                     {
                         var res = await PostToSlack(txt);
                         System.Diagnostics.Debug.WriteLine(res);
+                    }
+
+                    if (chkTwitter.Checked || chkSlack.Checked)
+                    {
+                        if (previous_post_file_name.Length > 0)
+                        {
+                            File.WriteAllText(previous_post_file_name, txtMessage.Text);  // 投稿内容をファイル保管
+                        }
+                        txtMessage.Clear();
                     }
                 }
             }
@@ -171,6 +183,19 @@ namespace mpost
                 .Replace(@"\", @"\\")
                 .Replace("\"", "\\\"")
                 .Replace("\r\n", "\\n");
+        }
+
+        private void tsmItemPreviousPost_Click(object sender, EventArgs e)
+        {
+            if (previous_post_file_name.Length > 0 && File.Exists(previous_post_file_name))
+            {
+                txtMessage.Text = File.ReadAllText(previous_post_file_name);
+            }
+        }
+
+        private void tsmItemClear_Click(object sender, EventArgs e)
+        {
+            txtMessage.Clear();
         }
     }
 }
