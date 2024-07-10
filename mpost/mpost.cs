@@ -157,7 +157,7 @@ namespace mpost
 
         private void txtMessage_TextChanged(object sender, EventArgs e)
         {
-            v8.Execute(@"res = twttr.txt.parseTweet('" + clean(txtMessage.Text) + "');");
+            v8.Execute(@"res = twttr.txt.parseTweet(""" + clean(txtMessage.Text) + @""");");
             dynamic vid = v8.Evaluate("res.valid ");
             btnPost.Enabled = vid;
 
@@ -182,7 +182,8 @@ namespace mpost
             return str.Trim()
                 .Replace(@"\", @"\\")
                 .Replace("\"", "\\\"")
-                .Replace("\r\n", "\\n");
+                .Replace("\n", "\\n")
+                .Replace("\r", "");
         }
 
         private void tsmItemPreviousPost_Click(object sender, EventArgs e)
